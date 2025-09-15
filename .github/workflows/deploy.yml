@@ -2,7 +2,7 @@ name: Build & Deploy (Vite Vue TS)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -24,10 +24,16 @@ jobs:
           version: 9
           run_install: true
 
+      - name: Install deps
+        run: pnpm -C myapp install
       - name: Build
-        run: pnpm build
+        run: pnpm -C myapp build
+      - name: Deploy
+        run: |
+          rsync -avz --delete \
+            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/id_ed25519" \
+            myapp/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_PATH }}/
 
-      # Prepare SSH for rsync (securely fetch server host key)
       - name: Add SSH key
         run: |
           install -m 700 -d ~/.ssh
