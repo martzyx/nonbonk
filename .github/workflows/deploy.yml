@@ -2,8 +2,12 @@ name: Build & Deploy (Vite Vue TS)
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: myapp
 
 jobs:
   build-and-deploy:
@@ -24,25 +28,21 @@ jobs:
           version: 9
           run_install: true
 
-      - name: Install deps
-        run: pnpm -C myapp install
       - name: Build
-        run: pnpm -C myapp build
-      - name: Deploy
-        run: |
-          rsync -avz --delete \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/id_ed25519" \
-            myapp/dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_PATH }}/
+        run: pnpm build
 
       - name: Add SSH key
         run: |
+          set -euxo pipefail
           install -m 700 -d ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+          echo "Scanning host key for ${{ vars.SSH_HOST }}:${{ vars.SSH_PORT }}"
+          ssh-keyscan -p ${{ vars.SSH_PORT }} ${{ vars.SSH_HOST }} > ~/.ssh/known_hosts
 
       - name: Deploy dist/ via rsync
         run: |
+          set -euxo pipefail
           rsync -avz --delete \
-            -e "ssh -p ${{ secrets.SSH_PORT }} -i ~/.ssh/id_ed25519" \
-            dist/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_PATH }}/
+            -e "ssh -p ${{ vars.SSH_PORT }} -i ~/.ssh/id_ed25519" \
+            dist/ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.REMOTE_PATH }}/
