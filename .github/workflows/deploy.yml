@@ -43,6 +43,12 @@ jobs:
           : "${PORT:=}"
           : "${USER:=}"
           : "${REMOTE_PATH:=}"
+          HOST="$(printf %s "$HOST" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          PORT="$(printf %s "$PORT" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          USER="$(printf %s "$USER" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          REMOTE_PATH="$(printf %s "$REMOTE_PATH" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          # ensure PORT is numeric if provided
+          if [ -n "$PORT" ] && ! echo "$PORT" | grep -Eq '^[0-9]+$'; then echo "PORT is not numeric: '$PORT'"; exit 1; fi
           echo "HOST=${HOST:-<empty>}"
           echo "PORT=${PORT:-<empty>} (will default to 22 if empty)"
           echo "USER=${USER:-<empty>}"
@@ -62,7 +68,10 @@ jobs:
         run: |
           set -euxo pipefail
           install -m 700 -d ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          cat > ~/.ssh/id_ed25519 <<'EOF'
+          ${{ secrets.SSH_KEY }}
+          EOF
+          sed -i 's/\r$//' ~/.ssh/id_ed25519
           [ -s ~/.ssh/id_ed25519 ] || { echo "SSH_KEY is empty. Add it under Settings → Secrets and variables → Actions → Secrets with name SSH_KEY"; exit 1; }
           chmod 600 ~/.ssh/id_ed25519
           echo "Scanning host key for $HOST:$PORT"
