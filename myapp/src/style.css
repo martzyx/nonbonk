@@ -12,6 +12,6 @@
   }
 
   #app {
-    @apply w-full max-w-xl mx-auto px-6 py-16;
+    @apply w-full max-w-3xl mx-auto px-6 py-16;
   }
 }
