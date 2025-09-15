@@ -12,6 +12,11 @@ defaults:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      HOST: ${{ vars.SSH_HOST || secrets.SSH_HOST }}
+      PORT: ${{ vars.SSH_PORT || secrets.SSH_PORT }}
+      USER: ${{ vars.SSH_USER || secrets.SSH_USER }}
+      REMOTE_PATH: ${{ vars.REMOTE_PATH || secrets.REMOTE_PATH }}
 
     steps:
       - name: Checkout
@@ -36,13 +41,14 @@ jobs:
           set -euxo pipefail
           install -m 700 -d ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+          [ -s ~/.ssh/id_ed25519 ] || { echo "SSH_KEY is empty"; exit 1; }
           chmod 600 ~/.ssh/id_ed25519
-          echo "Scanning host key for ${{ vars.SSH_HOST }}:${{ vars.SSH_PORT }}"
-          ssh-keyscan -p ${{ vars.SSH_PORT }} ${{ vars.SSH_HOST }} > ~/.ssh/known_hosts
+          echo "Scanning host key for $HOST:$PORT"
+          ssh-keyscan -p "$PORT" "$HOST" > ~/.ssh/known_hosts
 
       - name: Deploy dist/ via rsync
         run: |
           set -euxo pipefail
           rsync -avz --delete \
-            -e "ssh -p ${{ vars.SSH_PORT }} -i ~/.ssh/id_ed25519" \
-            dist/ ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}:${{ vars.REMOTE_PATH }}/
+            -e "ssh -p \"$PORT\" -i ~/.ssh/id_ed25519" \
+            dist/ "$USER@$HOST:$REMOTE_PATH/"
