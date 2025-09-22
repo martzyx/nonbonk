@@ -28,3 +28,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# MCP instructions
+.github/instructions/relewise-mcp-instructions.instructions.md
