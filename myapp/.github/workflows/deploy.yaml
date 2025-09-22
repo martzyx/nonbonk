@@ -5,18 +5,17 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: .
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      HOST: ${{ vars.SSH_HOST }}
-      PORT: ${{ vars.SSH_PORT }}
-      USER: ${{ vars.SSH_USER }}
+      SSH_HOST: ${{ vars.SSH_HOST }}
+      SSH_PORT: ${{ vars.SSH_PORT }}
+      SSH_USER: ${{ vars.SSH_USER }}
       REMOTE_PATH: ${{ vars.REMOTE_PATH }}
+      VITE_UMAMI_WEBSITE_ID: ${{ vars.VITE_UMAMI_WEBSITE_ID }}
+      VITE_UMAMI_SCRIPT_URL: ${{ vars.VITE_UMAMI_SCRIPT_URL }}
+      VITE_UMAMI_HOST_URL: ${{ vars.VITE_UMAMI_HOST_URL }}
 
     steps:
       - name: Checkout
@@ -39,47 +38,56 @@ jobs:
       - name: Sanity check CI inputs
         run: |
           set -euxo pipefail
-          : "${HOST:=}"
-          : "${PORT:=}"
-          : "${USER:=}"
+          : "${SSH_HOST:=}"
+          : "${SSH_PORT:=}"
+          : "${SSH_USER:=}"
           : "${REMOTE_PATH:=}"
-          HOST="$(printf %s "$HOST" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
-          PORT="$(printf %s "$PORT" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
-          USER="$(printf %s "$USER" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          : "${VITE_UMAMI_WEBSITE_ID:=}"
+          : "${VITE_UMAMI_SCRIPT_URL:=}"
+          : "${VITE_UMAMI_HOST_URL:=}"
+          SSH_HOST="$(printf %s "$SSH_HOST" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          SSH_PORT="$(printf %s "$SSH_PORT" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          SSH_USER="$(printf %s "$SSH_USER" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
           REMOTE_PATH="$(printf %s "$REMOTE_PATH" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
-          # ensure PORT is numeric if provided
-          if [ -n "$PORT" ] && ! echo "$PORT" | grep -Eq '^[0-9]+$'; then echo "PORT is not numeric: '$PORT'"; exit 1; fi
-          echo "HOST=${HOST:-<empty>}"
-          echo "PORT=${PORT:-<empty>} (will default to 22 if empty)"
-          echo "USER=${USER:-<empty>}"
+          VITE_UMAMI_WEBSITE_ID="$(printf %s "$VITE_UMAMI_WEBSITE_ID" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          VITE_UMAMI_SCRIPT_URL="$(printf %s "$VITE_UMAMI_SCRIPT_URL" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          VITE_UMAMI_HOST_URL="$(printf %s "$VITE_UMAMI_HOST_URL" | tr -d '\r' | sed -e 's/[[:space:]]\+$//')"
+          if [ -n "$SSH_PORT" ] && ! echo "$SSH_PORT" | grep -Eq '^[0-9]+$'; then echo "SSH_PORT is not numeric: '$SSH_PORT'"; exit 1; fi
+          echo "SSH_HOST=${SSH_HOST:-<empty>}"
+          echo "SSH_PORT=${SSH_PORT:-<empty>} (will default to 22 if empty)"
+          echo "SSH_USER=${SSH_USER:-<empty>}"
           echo "REMOTE_PATH=${REMOTE_PATH:-<empty>}"
-          if [ -z "${HOST}" ] || [ -z "${USER}" ] || [ -z "${REMOTE_PATH}" ]; then
+          echo "VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID:-<empty>}"
+          echo "VITE_UMAMI_SCRIPT_URL=${VITE_UMAMI_SCRIPT_URL:-<empty>}"
+          echo "VITE_UMAMI_HOST_URL=${VITE_UMAMI_HOST_URL:-<empty>}"
+          if [ -z "${SSH_HOST}" ] || [ -z "${SSH_USER}" ] || [ -z "${REMOTE_PATH}" ]; then
             echo "Missing required repo Variables. Set SSH_HOST, SSH_USER, REMOTE_PATH (and SSH_PORT optionally) under Settings → Secrets and variables → Actions → Variables."; exit 1; fi
-          if [ -z "${PORT}" ]; then PORT=22; fi
-          echo "Using PORT=$PORT"
+          if [ -z "${VITE_UMAMI_WEBSITE_ID}" ] || [ -z "${VITE_UMAMI_SCRIPT_URL}" ]; then
+            echo "Missing Umami variables. Set VITE_UMAMI_WEBSITE_ID and VITE_UMAMI_SCRIPT_URL under Settings → Secrets and variables → Actions → Variables."; exit 1; fi
+          if [ -z "${SSH_PORT}" ]; then SSH_PORT=22; fi
+          echo "Using SSH_PORT=$SSH_PORT"
           {
-            echo "PORT=$PORT"
-            echo "HOST=$HOST"
-            echo "USER=$USER"
+            echo "SSH_PORT=$SSH_PORT"
+            echo "SSH_HOST=$SSH_HOST"
+            echo "SSH_USER=$SSH_USER"
             echo "REMOTE_PATH=$REMOTE_PATH"
           } >> "$GITHUB_ENV"
 
       - name: Add SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_KEY }}
+          known_hosts: ""
+
+      - name: Scan host key
         run: |
           set -euxo pipefail
           install -m 700 -d ~/.ssh
-          cat > ~/.ssh/id_ed25519 <<'EOF'
-          ${{ secrets.SSH_KEY }}
-          EOF
-          sed -i 's/\r$//' ~/.ssh/id_ed25519
-          [ -s ~/.ssh/id_ed25519 ] || { echo "SSH_KEY is empty. Add it under Settings → Secrets and variables → Actions → Secrets with name SSH_KEY"; exit 1; }
-          chmod 600 ~/.ssh/id_ed25519
-          echo "Scanning host key for $HOST:$PORT"
-          ssh-keyscan -p "${PORT}" "${HOST}" > ~/.ssh/known_hosts
+          ssh-keyscan -p "${SSH_PORT}" "${SSH_HOST}" >> ~/.ssh/known_hosts
 
       - name: Deploy dist/ via rsync
         run: |
           set -euxo pipefail
           rsync -avz --delete \
-            -e "ssh -p ${PORT} -i ~/.ssh/id_ed25519" \
-            dist/ "${USER}@${HOST}:${REMOTE_PATH}/"
+            -e "ssh -p ${SSH_PORT}" \
+            dist/ "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/"
