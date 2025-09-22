@@ -7,7 +7,7 @@ const maybeLoadUmami = () => {
   const websiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID
   const scriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL
   const hostUrl = import.meta.env.VITE_UMAMI_HOST_URL
-  // console.log('maybeLoadUmami', { websiteId, scriptUrl })
+  console.log('maybeLoadUmami', { websiteId, scriptUrl })
   if (!websiteId || !scriptUrl) {
     console.log('Umami not configured: VITE_UMAMI_WEBSITE_ID or VITE_UMAMI_SCRIPT_URL is missing')
     return
