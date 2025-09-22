@@ -1,5 +1,18 @@
-# Vue 3 + TypeScript + Vite
+# nonbonk app developer notes
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## Install dependencies
+- Ensure `pnpm` is available locally (https://pnpm.io/installation)
+- Run `pnpm install` after cloning or whenever dependencies change
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## Local development
+- Launch the dev server with `pnpm dev`
+- Vite serves at `http://localhost:5173` by default; pass `--host` if you need LAN access
+
+## Build & preview
+- Create a production build with `pnpm build`
+- Preview the build locally with `pnpm preview`
+
+## Deploy via GitHub Actions
+- Commit your changes (`git commit -am "..."` or `git add` followed by `git commit`)
+- Push to the `main` branch: `git push origin main`
+- GitHub Actions in `martzyx/nonbonk` builds and deploys on push; monitor the Actions tab for status
